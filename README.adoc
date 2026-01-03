@@ -1,0 +1,153 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+= zig-formatrix-ffi
+:toc: left
+:icons: font
+
+Zig FFI bindings for https://github.com/hyperpolymath/formatrix-docs[formatrix-core], a document format conversion library.
+
+== Overview
+
+This package provides type-safe Zig bindings for the formatrix-core Rust library, enabling document parsing, rendering, and conversion between multiple markup formats:
+
+* Plain Text (.txt)
+* Markdown (.md)
+* AsciiDoc (.adoc)
+* Djot (.dj)
+* Org-mode (.org)
+* reStructuredText (.rst)
+* Typst (.typ)
+
+== Installation
+
+=== Using Zig Package Manager (zon)
+
+Add to your `build.zig.zon`:
+
+[source,zig]
+----
+.dependencies = .{
+    .formatrix = .{
+        .url = "https://github.com/hyperpolymath/zig-formatrix-ffi/archive/main.tar.gz",
+        .hash = "...", // Get from zig fetch
+    },
+},
+----
+
+=== Building from Source
+
+[source,bash]
+----
+git clone https://github.com/hyperpolymath/zig-formatrix-ffi.git
+cd zig-formatrix-ffi
+zig build
+----
+
+== Prerequisites
+
+You need `libformatrix_core` built from https://github.com/hyperpolymath/formatrix-docs[formatrix-docs]:
+
+[source,bash]
+----
+cd formatrix-docs
+cargo build --release --features ffi
+----
+
+Then specify the library path when building:
+
+[source,bash]
+----
+zig build -Dlibrary-path=/path/to/formatrix-docs/target/release
+----
+
+== Usage
+
+[source,zig]
+----
+const std = @import("std");
+const formatrix = @import("formatrix");
+
+pub fn main() !void {
+    const allocator = std.heap.page_allocator;
+
+    // Parse markdown content
+    var doc = try formatrix.Document.parse("# Hello\n\nWorld", .markdown);
+    defer doc.deinit();
+
+    // Render to Org-mode
+    const org_output = try doc.render(.org_mode, allocator);
+    defer allocator.free(org_output);
+
+    std.debug.print("{s}\n", .{org_output});
+
+    // Or use the direct convert helper
+    const rst = try formatrix.convert("# Title", .markdown, .restructured_text, allocator);
+    defer allocator.free(rst);
+}
+----
+
+== API Reference
+
+=== Types
+
+==== `Format`
+
+Enum representing document formats:
+
+* `.plain_text` - Plain text (.txt)
+* `.markdown` - Markdown (.md)
+* `.asciidoc` - AsciiDoc (.adoc)
+* `.djot` - Djot (.dj)
+* `.org_mode` - Org-mode (.org)
+* `.restructured_text` - reStructuredText (.rst)
+* `.typst` - Typst (.typ)
+
+Methods:
+* `extension() -> [:0]const u8` - Get file extension
+* `label() -> [:0]const u8` - Get display label
+
+==== `Document`
+
+A parsed document with automatic resource management.
+
+Methods:
+* `parse(content: [:0]const u8, format: Format) -> Error!Document` - Parse content
+* `openFile(path: [:0]const u8) -> Error!{doc: Document, format: Format}` - Open file
+* `render(format: Format, allocator: Allocator) -> Error![]u8` - Render to format
+* `saveFile(path: [:0]const u8) -> Error!void` - Save to file
+* `saveFileAs(path: [:0]const u8, format: Format) -> Error!void` - Save with format
+* `getTitle(allocator: Allocator) -> Error!?[]u8` - Get document title
+* `blockCount() -> usize` - Get block count
+* `sourceFormat() -> Format` - Get source format
+* `deinit() -> void` - Free resources
+
+=== Functions
+
+* `convert(content, from, to, allocator) -> Error![]u8` - Convert between formats
+* `detectFormat(content: [:0]const u8) -> Format` - Detect format from content
+* `detectFileFormat(path: [:0]const u8) -> Format` - Detect format from file extension
+* `version() -> [:0]const u8` - Get library version
+
+== Running Tests
+
+[source,bash]
+----
+zig build test
+----
+
+== Running Example
+
+[source,bash]
+----
+zig build run -Dlibrary-path=/path/to/formatrix-docs/target/release
+----
+
+== License
+
+AGPL-3.0-or-later
+
+== Related Projects
+
+* https://github.com/hyperpolymath/formatrix-docs[formatrix-docs] - The Rust core library
+* https://github.com/hyperpolymath/recon-silly-ation[recon-silly-ation] - Document reconciliation engine
+* https://github.com/hyperpolymath/docubot[docubot] - AI document assistant
+* https://github.com/hyperpolymath/docudactyl[docudactyl] - Documentation orchestrator
